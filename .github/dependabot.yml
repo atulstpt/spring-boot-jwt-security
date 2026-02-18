@@ -1,0 +1,42 @@
+version: 2
+updates:
+  # Maven/POM dependencies
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 10
+    rebase-strategy: "auto"
+    reviewers:
+      - "owner"
+    labels:
+      - "dependencies"
+      - "maven"
+    pull-request-branch-name:
+      separator: "/"
+    allow:
+      - dependency-type: "all"
+    ignore:
+      - dependency-name: "org.springframework.boot:spring-boot-starter-parent"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 5
+    rebase-strategy: "auto"
+    reviewers:
+      - "owner"
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+security-updates-enabled: true
+security-updates-pull-request-creation: "auto"
+

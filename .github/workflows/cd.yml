@@ -1,0 +1,147 @@
+name: CD (Continuous Deployment)
+
+on:
+  workflow_run:
+    workflows: [ "CI (Continuous Integration)" ]
+    types: [ completed ]
+    branches: [ main ]
+
+jobs:
+  deploy-to-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+
+    # Only run if CI workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build application
+        run: mvn clean package -DskipTests
+
+      - name: Generate build metadata
+        id: build-info
+        run: |
+          echo "BUILD_TIME=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+          echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Staging
+        run: |
+          echo "Deploying to Staging Environment"
+          echo "Build Number: ${{ steps.build-info.outputs.BUILD_NUMBER }}"
+          echo "Build Time: ${{ steps.build-info.outputs.BUILD_TIME }}"
+          echo "Commit: ${{ steps.build-info.outputs.COMMIT_SHA }}"
+          
+          # TODO: Add your staging deployment commands here
+          # Example: scp target/JwtExample-*.jar user@staging-server:/opt/apps/
+          # Example: ssh user@staging-server 'systemctl restart jwt-example'
+
+      - name: Health Check - Staging
+        run: |
+          echo "Checking staging deployment health..."
+          # TODO: Add your health check commands here
+          # Example: curl -f http://staging-server:8080/h2-console || exit 1
+
+      - name: Notify Staging Deployment
+        if: success()
+        run: echo "✅ Successfully deployed to Staging"
+
+      - name: Notify Staging Deployment Failed
+        if: failure()
+        run: echo "❌ Staging deployment failed"
+
+  deploy-to-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+
+    # Wait for staging deployment to complete
+    needs: deploy-to-staging
+
+    # Only run if staging deployment succeeded
+    if: success()
+
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build application
+        run: mvn clean package -DskipTests
+
+      - name: Generate build metadata
+        id: build-info
+        run: |
+          echo "BUILD_TIME=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+          echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Request Production Approval
+        id: approval
+        run: |
+          echo "⚠️ Production deployment requires manual approval"
+          echo "Build: ${{ steps.build-info.outputs.BUILD_NUMBER }}"
+          echo "Commit: ${{ steps.build-info.outputs.COMMIT_SHA }}"
+
+      - name: Deploy to Production
+        run: |
+          echo "Deploying to Production Environment"
+          echo "Build Number: ${{ steps.build-info.outputs.BUILD_NUMBER }}"
+          echo "Build Time: ${{ steps.build-info.outputs.BUILD_TIME }}"
+          echo "Commit: ${{ steps.build-info.outputs.COMMIT_SHA }}"
+          
+          # TODO: Add your production deployment commands here
+          # Example: scp target/JwtExample-*.jar user@prod-server:/opt/apps/
+          # Example: ssh user@prod-server 'systemctl restart jwt-example'
+
+      - name: Health Check - Production
+        run: |
+          echo "Checking production deployment health..."
+          # TODO: Add your health check commands here
+          # Example: curl -f http://prod-server:8080/api/health || exit 1
+
+      - name: Notify Production Deployment
+        if: success()
+        run: echo "✅ Successfully deployed to Production"
+
+      - name: Notify Production Deployment Failed
+        if: failure()
+        run: echo "❌ Production deployment failed"
+
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [ deploy-to-staging, deploy-to-production ]
+    if: always()
+
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "=== DEPLOYMENT SUMMARY ==="
+          echo "Staging: ${{ needs.deploy-to-staging.result }}"
+          echo "Production: ${{ needs.deploy-to-production.result }}"
+          echo "Workflow Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
