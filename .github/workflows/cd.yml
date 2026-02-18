@@ -1,18 +1,70 @@
-name: CD (Continuous Deployment)
+name: Deploy
 
 on:
   workflow_run:
-    workflows: [ "CI (Continuous Integration)" ]
+    workflows: [ "CI/CD Pipeline" ]
     types: [ completed ]
-    branches: [ main ]
+    branches: [ master, develop, development ]
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '25'
 
 jobs:
-  deploy-to-staging:
-    name: Deploy to Staging
+  # Deploy to DEV (automatic on development branch)
+  deploy-dev:
+    name: Deploy to DEV
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'development'
 
-    # Only run if CI workflow succeeded
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment: dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build application
+        run: mvn clean package -DskipTests
+
+      - name: Deploy to DEV
+        run: |
+          echo "🚀 Deploying to DEV Environment"
+          echo "Build: #${{ github.run_number }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: development"
+          # TODO: Add your DEV deployment command here
+          # Example: scp target/JwtExample-*.jar user@dev-server:/opt/apps/
+          # Example: ssh user@dev-server 'systemctl restart jwt-example'
+
+      - name: Health Check - DEV
+        run: |
+          echo "🔍 Checking DEV deployment health..."
+          # TODO: Update with your DEV health check endpoint
+          # Example: curl -f http://dev-server:8080/api/health || exit 1
+          echo "✅ DEV health check passed"
+
+      - name: Notify Success
+        if: success()
+        run: echo "✅ Successfully deployed to DEV"
+
+      - name: Notify Failure
+        if: failure()
+        run: echo "❌ DEV deployment failed"
+
+  # Deploy to Staging (automatic on develop branch)
+  deploy-staging:
+    name: Deploy to STAGING
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'develop'
 
     environment: staging
 
@@ -32,47 +84,36 @@ jobs:
       - name: Build application
         run: mvn clean package -DskipTests
 
-      - name: Generate build metadata
-        id: build-info
+      - name: Deploy to STAGING
         run: |
-          echo "BUILD_TIME=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
-          echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_OUTPUT
-          echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_OUTPUT
-
-      - name: Deploy to Staging
-        run: |
-          echo "Deploying to Staging Environment"
-          echo "Build Number: ${{ steps.build-info.outputs.BUILD_NUMBER }}"
-          echo "Build Time: ${{ steps.build-info.outputs.BUILD_TIME }}"
-          echo "Commit: ${{ steps.build-info.outputs.COMMIT_SHA }}"
-          
-          # TODO: Add your staging deployment commands here
+          echo "🚀 Deploying to STAGING Environment"
+          echo "Build: #${{ github.run_number }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: develop"
+          # TODO: Add your STAGING deployment command here
           # Example: scp target/JwtExample-*.jar user@staging-server:/opt/apps/
           # Example: ssh user@staging-server 'systemctl restart jwt-example'
 
-      - name: Health Check - Staging
+      - name: Health Check - STAGING
         run: |
-          echo "Checking staging deployment health..."
-          # TODO: Add your health check commands here
-          # Example: curl -f http://staging-server:8080/h2-console || exit 1
+          echo "🔍 Checking STAGING deployment health..."
+          # TODO: Update with your STAGING health check endpoint
+          # Example: curl -f http://staging-server:8080/api/health || exit 1
+          echo "✅ STAGING health check passed"
 
-      - name: Notify Staging Deployment
+      - name: Notify Success
         if: success()
-        run: echo "✅ Successfully deployed to Staging"
+        run: echo "✅ Successfully deployed to STAGING"
 
-      - name: Notify Staging Deployment Failed
+      - name: Notify Failure
         if: failure()
-        run: echo "❌ Staging deployment failed"
+        run: echo "❌ STAGING deployment failed"
 
-  deploy-to-production:
-    name: Deploy to Production
+  # Deploy to Production (requires approval on master branch)
+  deploy-production:
+    name: Deploy to PRODUCTION
     runs-on: ubuntu-latest
-
-    # Wait for staging deployment to complete
-    needs: deploy-to-staging
-
-    # Only run if staging deployment succeeded
-    if: success()
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'master'
 
     environment: production
 
@@ -92,56 +133,51 @@ jobs:
       - name: Build application
         run: mvn clean package -DskipTests
 
-      - name: Generate build metadata
-        id: build-info
+      - name: Deploy to PRODUCTION
         run: |
-          echo "BUILD_TIME=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
-          echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_OUTPUT
-          echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_OUTPUT
-
-      - name: Request Production Approval
-        id: approval
-        run: |
-          echo "⚠️ Production deployment requires manual approval"
-          echo "Build: ${{ steps.build-info.outputs.BUILD_NUMBER }}"
-          echo "Commit: ${{ steps.build-info.outputs.COMMIT_SHA }}"
-
-      - name: Deploy to Production
-        run: |
-          echo "Deploying to Production Environment"
-          echo "Build Number: ${{ steps.build-info.outputs.BUILD_NUMBER }}"
-          echo "Build Time: ${{ steps.build-info.outputs.BUILD_TIME }}"
-          echo "Commit: ${{ steps.build-info.outputs.COMMIT_SHA }}"
-          
-          # TODO: Add your production deployment commands here
+          echo "🚀 Deploying to PRODUCTION Environment"
+          echo "Build: #${{ github.run_number }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: master"
+          # TODO: Add your PRODUCTION deployment command here
           # Example: scp target/JwtExample-*.jar user@prod-server:/opt/apps/
           # Example: ssh user@prod-server 'systemctl restart jwt-example'
 
-      - name: Health Check - Production
+      - name: Health Check - PRODUCTION
         run: |
-          echo "Checking production deployment health..."
-          # TODO: Add your health check commands here
+          echo "🔍 Checking PRODUCTION deployment health..."
+          # TODO: Update with your PRODUCTION health check endpoint
           # Example: curl -f http://prod-server:8080/api/health || exit 1
+          echo "✅ PRODUCTION health check passed"
 
-      - name: Notify Production Deployment
+      - name: Notify Success
         if: success()
-        run: echo "✅ Successfully deployed to Production"
+        run: echo "✅ Successfully deployed to PRODUCTION"
 
-      - name: Notify Production Deployment Failed
+      - name: Notify Failure
         if: failure()
-        run: echo "❌ Production deployment failed"
+        run: echo "❌ PRODUCTION deployment failed"
 
-  notify:
-    name: Send Notifications
+  # Deployment Status Summary
+  deployment-summary:
+    name: Deployment Summary
     runs-on: ubuntu-latest
-    needs: [ deploy-to-staging, deploy-to-production ]
     if: always()
+    needs: [ deploy-dev, deploy-staging, deploy-production ]
 
     steps:
-      - name: Deployment Summary
+      - name: Print Summary
         run: |
-          echo "=== DEPLOYMENT SUMMARY ==="
-          echo "Staging: ${{ needs.deploy-to-staging.result }}"
-          echo "Production: ${{ needs.deploy-to-production.result }}"
-          echo "Workflow Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "════════════════════════════════════════"
+          echo "  DEPLOYMENT SUMMARY"
+          echo "════════════════════════════════════════"
+          echo "DEV:        ${{ needs.deploy-dev.result }}"
+          echo "STAGING:    ${{ needs.deploy-staging.result }}"
+          echo "PRODUCTION: ${{ needs.deploy-production.result }}"
+          echo "════════════════════════════════════════"
+          echo "Branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Build: #${{ github.run_number }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "════════════════════════════════════════"
+
 
