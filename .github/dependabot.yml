@@ -36,7 +36,6 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
-
-security-updates-enabled: true
-security-updates-pull-request-creation: "auto"
+    security-updates-enabled: true
+    security-updates-pull-request-creation: "auto"
 
