@@ -21,8 +21,9 @@ public class JwtSecretGenerator {
     }
 
     static void main() {
-        logger.info("Generated JWT Secret Key (use in production):");
-        logger.info(generateSecretKey());
+        if (logger.isInfoEnabled()) {
+            logger.info("Generated JWT Secret Key (use in production):");
+            logger.info(generateSecretKey());
+        }
     }
 }
-

@@ -2,6 +2,7 @@ package com.jwt.example.service;
 
 import com.jwt.example.dto.SignUpRequest;
 import com.jwt.example.entity.User;
+import com.jwt.example.exception.UserAlreadyExistsException;
 import com.jwt.example.repository.UserRepository;
 import java.util.Optional;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,11 +21,11 @@ public class UserService {
 
     public User createUser(SignUpRequest signUpRequest) {
         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-            throw new RuntimeException("Username is already taken!");
+            throw new UserAlreadyExistsException("Username is already taken!");
         }
 
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            throw new RuntimeException("Email is already in use!");
+            throw new UserAlreadyExistsException("Email is already in use!");
         }
 
         User user = User.builder()
@@ -46,4 +47,3 @@ public class UserService {
         return userRepository.findById(id);
     }
 }
-

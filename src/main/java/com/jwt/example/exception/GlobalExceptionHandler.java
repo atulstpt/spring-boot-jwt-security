@@ -39,6 +39,14 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse> handleUserAlreadyExistsException(UserAlreadyExistsException ex) {
+        return new ResponseEntity<>(
+                new ApiResponse(false, ex.getMessage()),
+                HttpStatus.CONFLICT
+        );
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse> handleBadCredentialsException() {
         return new ResponseEntity<>(
@@ -75,4 +83,3 @@ public class GlobalExceptionHandler {
         );
     }
 }
-
