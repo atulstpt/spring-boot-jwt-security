@@ -13,12 +13,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class PublicController {
 
     @GetMapping("/health")
-    public ResponseEntity<?> health() {
+    public ResponseEntity<ApiResponse> health() {
         return ResponseEntity.ok(new ApiResponse(true, "Application is running"));
     }
 
     @GetMapping("/info")
-    public ResponseEntity<?> info() {
+    public ResponseEntity<ApiResponse> info() {
         return ResponseEntity.ok(new ApiResponse(true, "JWT Authentication Example - Production Ready",
                 "Version: 1.0.0"));
     }

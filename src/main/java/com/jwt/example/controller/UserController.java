@@ -16,14 +16,14 @@ public class UserController {
 
     @GetMapping("/profile")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> getUserProfile(Authentication authentication) {
+    public ResponseEntity<ApiResponse> getUserProfile(Authentication authentication) {
         return ResponseEntity.ok(new ApiResponse(true, "User profile retrieved",
                 authentication.getName()));
     }
 
     @GetMapping("/info")
     @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> getUserInfo(Authentication authentication) {
+    public ResponseEntity<ApiResponse> getUserInfo(Authentication authentication) {
         return ResponseEntity.ok(new ApiResponse(true, "User info retrieved",
                 new UserInfo(authentication.getName(), authentication.getAuthorities().toString())));
     }
